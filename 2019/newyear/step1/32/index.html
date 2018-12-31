@@ -1,0 +1,23 @@
+<html><head>
+	<meta charset="utf-8">
+	<link rel="stylesheet" href="../../src/styles.css">
+	<title>laosb 的新年红包🧧- Step #1</title>
+</head>
+
+<body>
+	<main>
+		<h1>Step #1 - The Christmas Egg</h1>
+		<p>Ok you've made it. Did you decompile that wasm, or just guessed as I construct it?</p>
+    <p>Doesn't really matter.</p>
+		<button id="the-button" title="Ho ho ho.">Get your lucky number</button>
+	</main>
+  <script>
+  fetch('the_package_3.11.5.json')
+  .then(function(response) {
+    return response.json();
+  })
+  .then(function({ title }) {
+    document.getElementById('the-button').title = title
+  });
+  </script>
+</body></html>
