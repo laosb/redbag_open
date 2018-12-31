@@ -1,0 +1,19 @@
+body {
+  background: #b71c1c;
+  text-align: center;
+  padding: 0 2rem;
+}
+
+main {
+  max-width: 700px;
+  width: 100%;
+  margin: 6rem auto;
+  padding: 3rem;
+  background: #fff;
+  border-radius: 1rem;
+  box-shadow: 0 0 10px rgba(0, 0, 0, 0.2), inset 0 0 5px rgba(0, 0, 0, 0.1);
+}
+
+h1 {
+  color: #b71c1c;
+}
