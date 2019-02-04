@@ -1,0 +1,25 @@
+<html>
+
+<head>
+	<meta charset="utf-8">
+	<link rel="stylesheet" href="./src/styles.css">
+	<title>laosb 的新年红包🧧</title>
+</head>
+
+<body>
+	<main>
+		<h1>Guess</h1>
+		<p>The guess game has been updated. Number in 100 is way too much easy.</p>
+		<a href="#" onclick="window.guessGame.answer('89iuerguiytn8y23ct8erignyvqeycn9q83ynx9qngadjghadhfkljg')">Step #undefined - The Guess Game</a>
+	</main>
+  <script src="./redbag2019_0.js"></script>
+	<script>
+    wasm_bindgen('./regbag2019_0_bg.wasm').then(() => {
+      window.guessGame = {
+        answer: wasm_bindgen.answer
+      }
+    });
+  </script>
+</body>
+
+</html>
