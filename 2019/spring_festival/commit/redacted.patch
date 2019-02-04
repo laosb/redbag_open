@@ -1,0 +1,353 @@
+From [REDACTED]
+From: [REDACTED]
+Date: [REDACTED]
+Subject: [REDACTED]
+[FIND IT OUT. TAKE THE FULL STRING.]
+[REDACTED]
+---
+ packages/accounts-base/accounts_client.js     | 46 +++++++++++++++++++
+ packages/accounts-base/package.js             |  2 +-
+ packages/accounts-facebook/facebook.js        |  6 ++-
+ packages/accounts-facebook/package.js         |  2 +-
+ packages/accounts-github/github.js            |  6 ++-
+ packages/accounts-github/package.js           |  2 +-
+ packages/accounts-google/google.js            |  6 ++-
+ packages/accounts-google/package.js           |  2 +-
+ packages/accounts-meetup/meetup.js            |  6 ++-
+ packages/accounts-meetup/package.js           |  2 +-
+ .../meteor-developer.js                       |  6 ++-
+ packages/accounts-meteor-developer/package.js |  2 +-
+ packages/accounts-twitter/package.js          |  2 +-
+ packages/accounts-twitter/twitter.js          |  6 ++-
+ packages/accounts-weibo/package.js            |  2 +-
+ packages/accounts-weibo/weibo.js              |  6 ++-
+ 16 files changed, 89 insertions(+), 15 deletions(-)
+
+diff --git a/packages/accounts-base/accounts_client.js b/packages/accounts-base/accounts_client.js
+index 9ff6e6f8f87..99bcdcdd81b 100644
+--- a/packages/accounts-base/accounts_client.js
++++ b/packages/accounts-base/accounts_client.js
+@@ -28,6 +28,9 @@ export class AccountsClient extends AccountsCommon {
+ 
+     // Defined in localstorage_token.js.
+     this._initLocalStorage();
++
++    // This is for .registerClientLoginFunction & .callLoginFunction.
++    this._loginFuncs = {};
+   }
+ 
+   ///
+@@ -62,6 +65,49 @@ export class AccountsClient extends AccountsCommon {
+     return this._loggingOut.get();
+   }
+ 
++  /**
++   * @summary Register a new login function on the client. Intended for OAuth package authors. You can call the login function by using 
++   `Accounts.callLoginFunction` or `Accounts.callLoginFunction`.
++   * @locus Client
++   * @param {String} funcName The name of your login function. Used by `Accounts.callLoginFunction` and `Accounts.applyLoginFunction`.
++   Should be the OAuth provider name accordingly.
++   * @param {Function} func The actual function you want to call. Just write it in the manner of `loginWithFoo`.
++   */
++  registerClientLoginFunction(funcName, func) {
++    if (this._loginFuncs[funcName]) {
++      throw new Error(`${funcName} has been defined already`);
++    }
++    this._loginFuncs[funcName] = func;
++  }
++
++  /**
++   * @summary Call a login function defined using `Accounts.registerClientLoginFunction`. Excluding the first argument, all remaining
++   arguments are passed to the login function accordingly. Use `applyLoginFunction` if you want to pass in an arguments array that contains
++   all arguments for the login function.
++   * @locus Client
++   * @param {String} funcName The name of the login function you wanted to call.
++   */
++  callLoginFunction(funcName, ...funcArgs) {
++    if (!this._loginFuncs[funcName]) {
++      throw new Error(`${funcName} was not defined`);
++    }
++    return this._loginFuncs[funcName].apply(this, funcArgs);
++  }
++
++  /**
++   * @summary Same as ``callLoginFunction` but accept an `arguments` which contains all arguments for the login
++   function.
++   * @locus Client
++   * @param {String} funcName The name of the login function you wanted to call.
++   * @param {Array} funcArgs The `arguments` for the login function.
++   */
++  applyLoginFunction(funcName, funcArgs) {
++    if (!this._loginFuncs[funcName]) {
++      throw new Error(`${funcName} was not defined`);
++    }
++    return this._loginFuncs[funcName].apply(this, funcArgs);
++  }
++
+   /**
+    * @summary Log the user out.
+    * @locus Client
+diff --git a/packages/accounts-base/package.js b/packages/accounts-base/package.js
+index 568d29e33a9..80ac334d768 100644
+--- a/packages/accounts-base/package.js
++++ b/packages/accounts-base/package.js
+@@ -1,6 +1,6 @@
+ Package.describe({
+   summary: "A user account system",
+-  version: "1.2.16"
++  version: "1.3.0"
+ });
+ 
+ Package.onUse(function (api) {
+diff --git a/packages/accounts-facebook/facebook.js b/packages/accounts-facebook/facebook.js
+index 4517bf1d5a6..4179610e4b4 100644
+--- a/packages/accounts-facebook/facebook.js
++++ b/packages/accounts-facebook/facebook.js
+@@ -1,7 +1,7 @@
+ Accounts.oauth.registerService('facebook');
+ 
+ if (Meteor.isClient) {
+-  Meteor.loginWithFacebook = function(options, callback) {
++  const loginWithFacebook = function(options, callback) {
+     // support a callback without options
+     if (! callback && typeof options === "function") {
+       callback = options;
+@@ -11,6 +11,10 @@ if (Meteor.isClient) {
+     var credentialRequestCompleteCallback = Accounts.oauth.credentialRequestCompleteHandler(callback);
+     Facebook.requestCredential(options, credentialRequestCompleteCallback);
+   };
++  Accounts.registerClientLoginFunction('facebook', loginWithFacebook);
++  Meteor.loginWithFacebook = function () {
++    return Accounts.applyLoginFunction('facebook', arguments);
++  };
+ } else {
+   Accounts.addAutopublishFields({
+     // publish all fields including access token, which can legitimately
+diff --git a/packages/accounts-facebook/package.js b/packages/accounts-facebook/package.js
+index 1a272a6dc7c..060f01f0061 100644
+--- a/packages/accounts-facebook/package.js
++++ b/packages/accounts-facebook/package.js
+@@ -1,6 +1,6 @@
+ Package.describe({
+   summary: "Login service for Facebook accounts",
+-  version: "1.1.1"
++  version: "1.2.0"
+ });
+ 
+ Package.onUse(function(api) {
+diff --git a/packages/accounts-github/github.js b/packages/accounts-github/github.js
+index bf714776957..b2478518e58 100644
+--- a/packages/accounts-github/github.js
++++ b/packages/accounts-github/github.js
+@@ -1,7 +1,7 @@
+ Accounts.oauth.registerService('github');
+ 
+ if (Meteor.isClient) {
+-  Meteor.loginWithGithub = function(options, callback) {
++  const loginWithGithub = function(options, callback) {
+     // support a callback without options
+     if (! callback && typeof options === "function") {
+       callback = options;
+@@ -11,6 +11,10 @@ if (Meteor.isClient) {
+     var credentialRequestCompleteCallback = Accounts.oauth.credentialRequestCompleteHandler(callback);
+     Github.requestCredential(options, credentialRequestCompleteCallback);
+   };
++  Accounts.registerClientLoginFunction('github', loginWithGithub);
++  Meteor.loginWithGithub = function () {
++    return Accounts.applyLoginFunction('github', arguments);
++  };
+ } else {
+   Accounts.addAutopublishFields({
+     // not sure whether the github api can be used from the browser,
+diff --git a/packages/accounts-github/package.js b/packages/accounts-github/package.js
+index a612794ade9..9e9a7abeb20 100644
+--- a/packages/accounts-github/package.js
++++ b/packages/accounts-github/package.js
+@@ -1,6 +1,6 @@
+ Package.describe({
+   summary: 'Login service for Github accounts',
+-  version: '1.2.1'
++  version: '1.3.0'
+ });
+ 
+ Package.onUse(function (api) {
+diff --git a/packages/accounts-google/google.js b/packages/accounts-google/google.js
+index ab5c4c97ea8..306ef7882ca 100644
+--- a/packages/accounts-google/google.js
++++ b/packages/accounts-google/google.js
+@@ -1,7 +1,7 @@
+ Accounts.oauth.registerService('google');
+ 
+ if (Meteor.isClient) {
+-  Meteor.loginWithGoogle = function(options, callback) {
++  const loginWithGoogle = function(options, callback) {
+     // support a callback without options
+     if (! callback && typeof options === "function") {
+       callback = options;
+@@ -30,6 +30,10 @@ if (Meteor.isClient) {
+     var credentialRequestCompleteCallback = Accounts.oauth.credentialRequestCompleteHandler(callback);
+     Google.requestCredential(options, credentialRequestCompleteCallback);
+   };
++  Accounts.registerClientLoginFunction('google', loginWithGoogle);
++  Meteor.loginWithGoogle = function () {
++    return Accounts.applyLoginFunction('google', arguments);
++  };
+ } else {
+   Accounts.addAutopublishFields({
+     forLoggedInUser: _.map(
+diff --git a/packages/accounts-google/package.js b/packages/accounts-google/package.js
+index 6c624c9e081..0300c8159df 100644
+--- a/packages/accounts-google/package.js
++++ b/packages/accounts-google/package.js
+@@ -1,6 +1,6 @@
+ Package.describe({
+   summary: "Login service for Google accounts",
+-  version: "1.1.2"
++  version: "1.2.0"
+ });
+ 
+ Package.onUse(function(api) {
+diff --git a/packages/accounts-meetup/meetup.js b/packages/accounts-meetup/meetup.js
+index 08e8ec09389..5a25dde1951 100644
+--- a/packages/accounts-meetup/meetup.js
++++ b/packages/accounts-meetup/meetup.js
+@@ -1,7 +1,7 @@
+ Accounts.oauth.registerService('meetup');
+ 
+ if (Meteor.isClient) {
+-  Meteor.loginWithMeetup = function(options, callback) {
++  const loginWithMeetup = function(options, callback) {
+     // support a callback without options
+     if (! callback && typeof options === "function") {
+       callback = options;
+@@ -11,6 +11,10 @@ if (Meteor.isClient) {
+     var credentialRequestCompleteCallback = Accounts.oauth.credentialRequestCompleteHandler(callback);
+     Meetup.requestCredential(options, credentialRequestCompleteCallback);
+   };
++  Accounts.registerClientLoginFunction('meetup', loginWithMeetup);
++  Meteor.loginWithMeetup = function () {
++    return Accounts.applyLoginFunction('meetup', arguments);
++  };
+ } else {
+   Accounts.addAutopublishFields({
+     // publish all fields including access token, which can legitimately
+diff --git a/packages/accounts-meetup/package.js b/packages/accounts-meetup/package.js
+index ee19a9a8b90..325b535eda2 100644
+--- a/packages/accounts-meetup/package.js
++++ b/packages/accounts-meetup/package.js
+@@ -1,6 +1,6 @@
+ Package.describe({
+   summary: 'Login service for Meetup accounts',
+-  version: '1.2.1'
++  version: '1.3.0'
+ });
+ 
+ Package.onUse(function (api) {
+diff --git a/packages/accounts-meteor-developer/meteor-developer.js b/packages/accounts-meteor-developer/meteor-developer.js
+index 79ac4e4c2ce..fed49ba7592 100644
+--- a/packages/accounts-meteor-developer/meteor-developer.js
++++ b/packages/accounts-meteor-developer/meteor-developer.js
+@@ -1,7 +1,7 @@
+ Accounts.oauth.registerService("meteor-developer");
+ 
+ if (Meteor.isClient) {
+-  Meteor.loginWithMeteorDeveloperAccount = function (options, callback) {
++  const loginWithMeteorDeveloperAccount = function (options, callback) {
+     // support a callback without options
+     if (! callback && typeof options === "function") {
+       callback = options;
+@@ -12,6 +12,10 @@ if (Meteor.isClient) {
+           Accounts.oauth.credentialRequestCompleteHandler(callback);
+     MeteorDeveloperAccounts.requestCredential(options, credentialRequestCompleteCallback);
+   };
++  Accounts.registerClientLoginFunction('meteor-developer', loginWithMeteorDeveloperAccount);
++  Meteor.loginWithMeteorDeveloperAccount = function () {
++    return Accounts.applyLoginFunction('meteor-developer', arguments);
++  };
+ } else {
+   Accounts.addAutopublishFields({
+     // publish all fields including access token, which can legitimately be used
+diff --git a/packages/accounts-meteor-developer/package.js b/packages/accounts-meteor-developer/package.js
+index a051ef61af3..e788bad6b87 100644
+--- a/packages/accounts-meteor-developer/package.js
++++ b/packages/accounts-meteor-developer/package.js
+@@ -1,6 +1,6 @@
+ Package.describe({
+   summary: 'Login service for Meteor developer accounts',
+-  version: '1.2.1'
++  version: '1.3.0'
+ });
+ 
+ Package.onUse(function (api) {
+diff --git a/packages/accounts-twitter/package.js b/packages/accounts-twitter/package.js
+index e07a79061da..df68761a26b 100644
+--- a/packages/accounts-twitter/package.js
++++ b/packages/accounts-twitter/package.js
+@@ -1,6 +1,6 @@
+ Package.describe({
+   summary: "Login service for Twitter accounts",
+-  version: "1.2.1"
++  version: "1.3.0"
+ });
+ 
+ Package.onUse(function(api) {
+diff --git a/packages/accounts-twitter/twitter.js b/packages/accounts-twitter/twitter.js
+index 176d82a6552..1d44f474f23 100644
+--- a/packages/accounts-twitter/twitter.js
++++ b/packages/accounts-twitter/twitter.js
+@@ -1,7 +1,7 @@
+ Accounts.oauth.registerService('twitter');
+ 
+ if (Meteor.isClient) {
+-  Meteor.loginWithTwitter = function(options, callback) {
++  const loginWithTwitter = function(options, callback) {
+     // support a callback without options
+     if (! callback && typeof options === "function") {
+       callback = options;
+@@ -11,6 +11,10 @@ if (Meteor.isClient) {
+     var credentialRequestCompleteCallback = Accounts.oauth.credentialRequestCompleteHandler(callback);
+     Twitter.requestCredential(options, credentialRequestCompleteCallback);
+   };
++  Accounts.registerClientLoginFunction('twitter', loginWithTwitter);
++  Meteor.loginWithTwitter = function () {
++    return Accounts.applyLoginFunction('twitter', arguments);
++  };
+ } else {
+   var autopublishedFields = _.map(
+     // don't send access token. https://dev.twitter.com/discussions/5025
+diff --git a/packages/accounts-weibo/package.js b/packages/accounts-weibo/package.js
+index 6129b8a90ac..b266fd83e91 100644
+--- a/packages/accounts-weibo/package.js
++++ b/packages/accounts-weibo/package.js
+@@ -1,6 +1,6 @@
+ Package.describe({
+   summary: "Login service for Sina Weibo accounts",
+-  version: "1.1.1"
++  version: "1.2.0"
+ });
+ 
+ Package.onUse(function(api) {
+diff --git a/packages/accounts-weibo/weibo.js b/packages/accounts-weibo/weibo.js
+index f55ec19bc71..b3fc92df0fe 100644
+--- a/packages/accounts-weibo/weibo.js
++++ b/packages/accounts-weibo/weibo.js
+@@ -1,7 +1,7 @@
+ Accounts.oauth.registerService('weibo');
+ 
+ if (Meteor.isClient) {
+-  Meteor.loginWithWeibo = function(options, callback) {
++  const loginWithWeibo = function(options, callback) {
+     // support a callback without options
+     if (! callback && typeof options === "function") {
+       callback = options;
+@@ -11,6 +11,10 @@ if (Meteor.isClient) {
+     var credentialRequestCompleteCallback = Accounts.oauth.credentialRequestCompleteHandler(callback);
+     Weibo.requestCredential(options, credentialRequestCompleteCallback);
+   };
++  Accounts.registerClientLoginFunction('weibo', loginWithWeibo);
++  Meteor.loginWithWeibo = function () {
++    return Accounts.applyLoginFunction('weibo', arguments);
++  };
+ } else {
+   Accounts.addAutopublishFields({
+     // publish all fields including access token, which can legitimately
